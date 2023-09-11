@@ -1,0 +1,87 @@
+---
+title: "ML Assignment"
+output: html_document
+date: "2023-09-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load in packages we'll use
+library(tidyverse) # utility functions
+library(rpart) # for regression trees
+library(randomForest) # for random forests
+```
+
+#Source if the DataSet: https://www.kaggle.com/code/rtatman/welcome-to-data-science-in-r/input
+```{r}
+# read the data and store data in DataFrame titled melbourne_data
+df <- read.csv('C:\\Users\\Admin\\Downloads\\Uni\\Machine Learning\\Assignment 1\\Data.csv')
+df
+```
+
+```{r}
+# Descriptive statistics for a quantitative variable (e.g., Rooms, Price, etc)
+print("Summary for rooms")
+summary(df$Rooms)
+print("Summary for Price")
+summary(df$Price)
+print("Summary for Distance")
+summary(df$Distance)
+print("Summary for PostCode")
+summary(df$Postcode)
+print("Summary for Bedroom2")
+summary(df$Bedroom2)
+print("Summary for Bathroom")
+summary(df$Bathroom)
+print("Summary for YearBuilt")
+summary(df$YearBuilt)
+```
+
+```{r}
+print("Standard Deviation for Rooms")
+sd(df$Rooms)
+print("Standard Deviation for Price")
+sd(df$Price)
+```
+
+```{r}
+# Descriptive statistics for a categorical variable (e.g., RegionName)
+print("Frequency of the instances of Address")
+table(df$Address)
+print("Frequency of the instances of RegionName")
+table(df$Regionname)
+print("Frequency of the instances of SellerName")
+table(df$SellerG)
+```
+
+
+```{r}
+#Data Normalization
+df$YearNormalized<-scale(df$YearBuilt)
+```
+
+```{r}
+YearBuilt <- df$Year_Normalized
+Price <- df$Price
+plot(Price, YearBuilt ,main="Prices from 1196 to 2018")
+```
+
+```{r}
+#Transformation
+Transformation<-sqrt(df$Price)
+print(Transformation)
+```
+
+```{r}
+library(ggplot2)
+scatterplot <- ggplot(data = df, aes(x = YearBuilt, y = Price)) +  geom_point() +  # Add points for the scatterplot
+  labs(x = "YearBuilt", y = "Price", title = "Scatterplot of YearBuilt vs. Price")
+scatterplot
+```
+
+
+
+
