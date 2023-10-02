@@ -1,0 +1,330 @@
+---
+title: "ML Assignment 2"
+output: html_document
+date: "2023-09-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Summary
+
+Universal bank is a young bank growing rapidly in terms of overall customer acquisition. The majority of these customers are liability customers (depositors) with varying sizes of relationship with the bank. The customer base of asset customers (borrowers) is quite small, and the bank is interested in expanding this base rapidly in more loan business. In particular, it wants to explore ways of converting its liability customers to personal loan customers. A campaign that the bank ran last year for liability customers showed a healthy conversion rate of over 9% success. This has encouraged the retail marketing department to devise smarter campaigns with better target marketing. The goal is to use k-NN to predict whether a new customer will accept a loan offer. This will serve as the basis for the design of a new campaign. The file UniversalBank.csv contains data on 5000 customers. The data include customer demographic information (age, income, etc.), the customer’s relationship with the bank (mortgage, securities account, etc.), and the customer response to the last personal loan campaign (Personal Loan). Among these 5000 customers, only 480 (= 9.6%) accepted the personal loan that was offered to them in the earlier campaign. 
+Partition the data into training (60%) and validation (40%) sets. 
+
+Consider the following customer: 
+
+1. Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1, and Credit Card = 1. Perform a k-NN classification with all predictors except ID and ZIP code using k = 1. Remember to transform categorical predictors with more than two categories into dummy variables first. Specify the success class as 1 (loan acceptance), and use the default cutoff value of 0.5. How would this customer be classified? 
+2. What is a choice of k that balances between overfitting and ignoring the predictor information? 
+3. Show the confusion matrix for the validation data that results from using the best k. 
+4. Consider the following customer: Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, Education_1 = 0, Education_2 = 1, Education_3 = 0, Mortgage = 0, Securities Account = 0, CD Account = 0, Online = 1 and Credit Card = 1. Classify the customer using the best k.
+5. Repartition the data, this time into training, validation, and test sets (50% : 30% : 20%). Apply the k-NN method with the k chosen above. Compare the confusion matrix of the test set with that of the training and validation sets. Comment on the differences and their reason.
+
+
+#Load Required Libraries
+```{r}
+library(ggplot2)
+library(lattice)
+library(class)
+library(caret)
+library(e1071)
+```
+
+
+# Data Cleaning
+
+```{r}
+df<- read.csv("C:\\Users\\Admin\\Desktop\\UniversalBank.csv")
+dim(df)
+head(df)
+head(df,5)
+```
+
+#Drop Variables ID and ZIP
+```{r}
+df<-df[,-c(1,5)]
+```
+
+
+```{r}
+#Only Education needs to be converted to the factor
+df$Education<-as.factor(df$Education)
+```
+
+```{r}
+#Now convert Education  to Dummy variables
+groups<-dummyVars(~.,data = df) #THis creates the dummy groups
+#THis has created the model that we'er going to implement
+```
+
+```{r}
+modified.df<-as.data.frame(predict(groups,df))
+```
+
+```{r}
+#Important to ensure that we get the same sample if we rerun the code
+#parting the data for training and validation
+set.seed(1)
+train.index<-sample(row.names(modified.df), 0.6*dim(modified.df)[1])
+valid.index<-setdiff(row.names(modified.df), train.index)
+train.df<-modified.df[train.index,]
+valid.df<-modified.df[valid.index,]
+```
+
+```{r}
+#t=transpose
+t(t(names(train.df)))
+```
+
+```{r}
+#standard Deviation
+train.norm.df<-train.df[,-10] #Personal Income is 10th Variable
+valid.norm.df<-valid.df[,-10]
+```
+
+```{r}
+#Normalization
+norm.values<-preProcess(train.df[,-10], method = c("center","scale"))
+train.norm.df<-predict(norm.values,train.df[,-10])
+valid.norm.df<-predict(norm.values,valid.df[,-10])
+```
+
+
+#Part 1 of Question
+#We have converted all categorical variables to dummy variables
+```{r}
+#NewCustomer
+new_customer<-data.frame(
+  Age = 40,
+  Experience = 10,
+  Income = 84,
+  Family = 2,
+  CCAvg = 2,
+  Education.1 = 0,
+  Education.2 = 1,
+  Education.3 = 0,
+  Mortgage = 0,
+  Securities.Account = 0,
+  CD.Account = 0,
+  Online = 1,
+  CreditCard = 1
+)
+```
+
+```{r}
+#Normalize the new customer
+new.cust.norm<-new_customer
+new.cust.norm<-predict(norm.values,new.cust.norm)
+```
+
+
+```{r}
+#knn 
+knn.pred1<-class::knn(train=train.norm.df,
+                      test = new.cust.norm,
+                      cl= train.df$Personal.Loan, k=1)
+knn.pred1
+```
+
+
+#Part 2 of Question
+```{r}
+#Calculate the accuracy for each value of k    
+#Set the range of k values to consider
+accuracy.df<-data.frame(k=seq(1,50,1), overallaccuracy = rep(0,50)) 
+for(i in 1:50){
+  knn.pred<-class::knn(train = train.norm.df,
+                       test = valid.norm.df,
+                       cl = train.df$Personal.Loan, k = i)
+  accuracy.df[i,2]<-confusionMatrix(knn.pred,
+                                    as.factor(valid.df$Personal.Loan), positive= "1")$overall[1]
+}
+
+which(accuracy.df[,2]==max(accuracy.df[,2]))
+
+plot(accuracy.df$k, accuracy.df$overallaccuracy)
+```
+
+
+#Part 3 of Question
+```{r}
+#Confusion Matrix using best K=3
+knn.pred <- class::knn(train = train.norm.df,
+                         test = valid.norm.df, 
+                         cl = train.df$Personal.Loan, k = 3)
+
+confusionMatrix(knn.pred,as.factor(valid.df$Personal.Loan))
+
+```
+
+#Part 4 of Question
+
+```{r}
+#New customer profile
+new_customer2<-data.frame(
+  Age = 40, 
+  Experience = 10, 
+  Income = 84, 
+  family =2, 
+  CCAvg = 2, 
+  Education_1 = 0,
+  Education_2 = 1, 
+  Education_3 = 0, 
+  Mortgage = 0, 
+  Securities.Account = 0, 
+  CDAccount = 0, 
+  Online = 1, 
+  CreditCard = 1)
+
+```
+
+
+```{r}
+
+knn.pred1 <- class::knn(train = train.norm.df, 
+                       test = new.cust.norm, 
+                       cl = train.df$Personal.Loan, k = 3)
+knn.pred1
+```
+
+
+```{r}
+#Print the predicted class (1 for loan acceptance, 0 for loan rejection)
+print("This customer is classified as: Loan Rejected")
+
+```
+#Part 5 of Question   
+
+```{r}
+#Split the data into 50% training and 30% Validation and 20% Testing
+set.seed(1)
+Train_Index1 <- sample(row.names(modified.df), 0.5*dim(modified.df)[1])
+Val_Index1 <- sample(setdiff(row.names(modified.df),Train_Index1),0.3*dim(modified.df)[1])
+Test_Index1 <-setdiff(row.names(modified.df),union(Train_Index1,Val_Index1))
+Train_Data <- modified.df[Train_Index1,]
+Validation_Data <- modified.df[Val_Index1,]
+Test_Data <- modified.df[Test_Index1,]
+```
+
+
+```{r}
+#Now normalize the data
+train.norm.df1 <- Train_Data[,-10]
+valid.norm.df1 <- Validation_Data[,-10]
+Test.norm.df1  <-Test_Data[,-10]
+
+norm.values1 <- preProcess(Train_Data[, -10], method=c("center", "scale"))
+train.norm.df1 <- predict(norm.values1, Train_Data[,-10])
+valid.norm.df1 <- predict(norm.values1, Validation_Data[,-10])
+Test.norm.df1 <-predict(norm.values1,Test_Data[,-10])
+
+```
+
+
+```{r}
+#Using K-NN
+validation_knn = class::knn(train = train.norm.df1, 
+                           test = valid.norm.df1,  
+                           cl = Train_Data$Personal.Loan, 
+                           k = 3)
+
+test_knn = class::knn(train = train.norm.df1, 
+                     test = Test.norm.df1,  
+                     cl = Train_Data$Personal.Loan, 
+                     k = 3)
+
+Train_knn = class::knn(train = train.norm.df1, 
+                     test = train.norm.df1,  
+                     cl = Train_Data$Personal.Loan, 
+                     k = 3)
+```
+
+
+```{r}
+#Validation confusion Matrix
+validation_confusion_matrix = confusionMatrix(validation_knn, 
+                                               as.factor(Validation_Data$Personal.Loan), 
+                                               positive = "1")
+
+validation_confusion_matrix
+
+```
+
+
+```{r}
+#Test confusion Matrix
+test_confusion_matrix = confusionMatrix(test_knn, 
+                                         as.factor(Test_Data$Personal.Loan), 
+                                         positive = "1")
+
+
+test_confusion_matrix
+
+```
+
+
+```{r}
+#Training confusion Matrix
+Training_confusion_matrix = confusionMatrix(Train_knn, 
+                                               as.factor(Train_Data$Personal.Loan), 
+                                               positive = "1")
+
+Training_confusion_matrix
+```
+
+
+# Difference
+
+##Test vs.Train:
+
+***Accuracy:*** Train has a higher accuracy (0.9772) compared to Test (0.9507).
+
+**Reason:** This because of differences in the dataset used for evaluation. Train may have a more balanced or easier-to-predict dataset.
+
+***Sensitivity (True Positive Rate):*** Train has higher sensitivity (0.7589) compared to Test (0.5875).
+
+**Reason:** This indicates that Train's model is better at correctly identifying positive cases (e.g., loan acceptances). It may have a lower false negative rate.
+
+***Specificity (True Negative Rate):*** Train has higher specificity (0.9987) compared to Test (0.99403).
+
+**Reason:** This suggests that Train's model is better at correctly identifying negative cases (e.g., loan rejections). It may have a lower false positive rate.
+
+***Positive Predictive Value (Precision):*** Train has a higher positive predictive value (0.9827) compared to Test (0.92157).
+
+**Reason:** Train's model is more precise in predicting positive cases, resulting in fewer false positive predictions.
+
+## Train vs.Vlidation:
+
+**Accuracy:** Train still has a higher accuracy (0.9772) compared to Validation (0.958).
+
+***Reason:*** Similar to the comparison with Test, Train may have a more balanced or easier-to-predict dataset.
+
+**Sensitivity (True Positive Rate):** Train has higher sensitivity (0.7589) compared to Validation (0.625).
+
+***Reason:*** Train's model is better at correctly identifying positive cases. This indicates that Validation's model may have a higher false negative rate.
+
+**Specificity (True Negative Rate):** Train has higher specificity (0.9987) compared to Validation (0.9934).
+
+***Reason:*** Train's model is better at correctly identifying negative cases. Validation's model may have a slightly higher false positive rate.
+
+**Positive Predictive Value (Precision):** Train still has a higher positive predictive value (0.9827) compared to Validation (0.9091).
+
+***Reason:*** Train's model is more precise in predicting positive cases, resulting in fewer false positive predictions.
+
+## Potential Reasons for Differences:
+
+**Data set Differences** Variations in the composition and distribution of data between different sets can significantly impact model performance. For  illustration, one data set may be more imbalanced, making it harder to  prognosticate rare events.   
+
+**Model Variability** Differences in model configurations or  arbitrary initialization of model parameters can lead to variations in performance.
+
+**Hyperparameter Tuning** Different hyper parameter settings,  similar as the choice of k in k- NN or other model-specific parameters, can affect model performance.
+
+**Data unyoking** If the data sets are  resolve else into training,  confirmation, and test sets in each evaluation, this can lead to variations in results, especially for small data sets.
+
+**Sample Variability** In small data sets, variations in the specific samples included in the  confirmation and test sets can  impact performance  criteria .
+
+**Randomness** Some models,  similar as neural networks, involve randomness in their optimization process, leading to slight variations. 
+
+
+
